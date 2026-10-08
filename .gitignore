@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Generated Output Certificates
+output/
+
+# macOS system files
+.DS_Store
+._*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment & IDE
+.env
+.vscode/
+.idea/

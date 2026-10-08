@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Canvas Debug Test</title>
+  <style>
+    body { background: #111; color: #fff; font-family: sans-serif; padding: 20px; }
+    #status { background: #1a1a2e; border: 1px solid #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; white-space: pre-line; font-size: 13px; }
+    #imgTest { border: 3px solid lime; display: block; max-width: 800px; }
+    .ok  { color: #4ade80; }
+    .err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <h2>🔍 Canvas Debug Page</h2>
+  <div id="status">Loading...</div>
+  <img id="imgTest" alt="Template should appear here" src="">
+
+  <script>
+    const log = document.getElementById('status');
+    const img = document.getElementById('imgTest');
+
+    function addLog(msg, ok) {
+      const line = document.createElement('div');
+      line.className = ok === false ? 'err' : 'ok';
+      line.textContent = (ok === false ? '❌ ' : '✅ ') + msg;
+      log.appendChild(line);
+    }
+
+    log.textContent = '';
+
+    // Test 1: fetch template info
+    fetch('/api/template-info')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          addLog('API /api/template-info → ' + d.filename + ' (' + Math.round(d.width) + 'x' + Math.round(d.height) + ')');
+        } else {
+          addLog('/api/template-info returned error: ' + JSON.stringify(d), false);
+        }
+      })
+      .catch(e => addLog('/api/template-info FAILED: ' + e.message, false));
+
+    // Test 2: load image
+    img.onload  = () => addLog('Image loaded successfully! Size: ' + img.naturalWidth + 'x' + img.naturalHeight + 'px');
+    img.onerror = () => addLog('Image FAILED to load from /api/template-image', false);
+    img.src = '/api/template-image?t=' + Date.now();
+    addLog('Set img.src = /api/template-image — waiting for load...');
+  </script>
+</body>
+</html>

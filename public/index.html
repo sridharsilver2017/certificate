@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CertifyPro - Batch Certificate Studio & Generator</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Alex+Brush&family=Cinzel:wght@600;700;800&family=Great+Vibes&family=Montserrat:wght@500;700;800&family=Playfair+Display:ital,wght@0,600;0,800;1,600&display=swap" rel="stylesheet">
+  
+
+
+  <!-- SheetJS for Excel/CSV parsing (local) -->
+  <script src="/vendor/xlsx.min.js"></script>
+  <!-- Lucide Icons (local) -->
+  <script src="/vendor/lucide.min.js"></script>
+
+  <link rel="stylesheet" href="style.css?v=9">
+</head>
+<body>
+  <div class="app-layout">
+    
+    <!-- Top Header Bar -->
+    <header class="top-header">
+      <div class="header-left">
+        <div class="brand-badge">
+          <div class="brand-icon">
+            <i data-lucide="award"></i>
+          </div>
+          <div>
+            <h1 class="brand-title">Certify<span class="highlight">Pro</span></h1>
+            <span class="brand-subtitle">Batch Certificate Studio</span>
+          </div>
+        </div>
+        <div class="template-status-chip" id="templateChip">
+          <i data-lucide="file-check"></i>
+          <span id="currentTemplateName">Certificate-Master.pdf</span>
+          <label for="templateUploadInput" class="btn-change-template" title="Click to upload a new Master PDF Certificate">
+            <i data-lucide="upload-cloud"></i>
+            <span>Change Master</span>
+          </label>
+          <input type="file" id="templateUploadInput" accept=".pdf" style="display: none;">
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="btnInstantPreview" class="btn btn-secondary">
+          <i data-lucide="eye"></i>
+          <span>Sample Preview</span>
+        </button>
+        <button id="btnDownloadZip" class="btn btn-secondary">
+          <i data-lucide="archive"></i>
+          <span>Download ZIP</span>
+        </button>
+        <button id="btnGenerateBatch" class="btn btn-primary btn-glow">
+          <i data-lucide="sparkles"></i>
+          <span>Generate to Folder</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-body">
+      
+      <!-- Left Sidebar: Controls & Data -->
+      <aside class="sidebar-panel">
+        
+        <!-- Tab Navigation -->
+        <div class="sidebar-tabs">
+          <button class="tab-btn active" data-tab="tab-data">
+            <i data-lucide="users"></i>
+            <span>Recipients Data</span>
+            <span class="badge" id="dataCountBadge">0</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-fields">
+            <i data-lucide="layers"></i>
+            <span>Text & Styling</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-settings">
+            <i data-lucide="settings"></i>
+            <span>Export Config</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: RECIPIENTS DATA -->
+        <div class="tab-content active" id="tab-data">
+          
+          <div class="section-card">
+            <div class="section-header">
+              <label class="section-title">Data Input Method</label>
+              <div class="pill-toggle">
+                <button class="pill-btn active" id="btnModePaste">Paste Names</button>
+                <button class="pill-btn" id="btnModeFile">Upload Excel/CSV</button>
+              </div>
+            </div>
+
+            <!-- Mode 1: Quick Paste -->
+            <div id="pasteModeSection">
+              <p class="section-hint">Paste candidate names below, one per line:</p>
+              <textarea id="rawNamesInput" class="text-area-custom" rows="7" placeholder="Johnathan Doe&#10;Sophia Anderson&#10;Marcus Sterling&#10;Dr. Emily Vance&#10;Alexandre Dubois"></textarea>
+              <div class="helper-actions">
+                <button id="btnLoadSampleNames" class="btn-text">
+                  <i data-lucide="sparkle"></i> Load 8 Sample Names
+                </button>
+                <button id="btnClearNames" class="btn-text text-danger">Clear</button>
+              </div>
+            </div>
+
+            <!-- Mode 2: File Upload -->
+            <div id="fileModeSection" style="display: none;">
+              <div class="dropzone" id="fileDropzone">
+                <i data-lucide="file-spreadsheet" class="dropzone-icon"></i>
+                <p class="dropzone-text"><strong>Drag & Drop Excel or CSV</strong></p>
+                <span class="dropzone-hint">Supports .xlsx, .xls, .csv files</span>
+                <input type="file" id="dataFilePicker" accept=".csv, .xlsx, .xls" style="display: none;">
+                <button class="btn btn-secondary btn-sm" id="btnBrowseFile">Browse File</button>
+              </div>
+              <div id="fileUploadInfo" class="upload-file-info" style="display: none;">
+                <i data-lucide="check-circle" class="text-success"></i>
+                <span id="uploadedFileName">data.xlsx</span>
+                <button class="btn-icon-subtle" id="btnRemoveUploadedFile"><i data-lucide="x"></i></button>
+              </div>
+
+              <!-- Column Mapping Controls -->
+              <div id="columnMappingSection" class="column-mapping-box" style="display: none;">
+                <div class="mapping-title">
+                  <i data-lucide="columns"></i>
+                  <span>Column Mapping</span>
+                </div>
+                <div class="mapping-grid">
+                  <div class="control-group">
+                    <label class="control-label">Recipient Name *</label>
+                    <select id="mapColName" class="select-custom"></select>
+                  </div>
+                  <div class="control-group">
+                    <label class="control-label">Course / Title</label>
+                    <select id="mapColCourse" class="select-custom"></select>
+                  </div>
+                  <div class="control-group">
+                    <label class="control-label">Date</label>
+                    <select id="mapColDate" class="select-custom"></select>
+                  </div>
+                  <div class="control-group">
+                    <label class="control-label">Certificate ID</label>
+                    <select id="mapColCertId" class="select-custom"></select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Data Preview Table -->
+          <div class="section-card">
+            <div class="section-header">
+              <label class="section-title">Loaded Recipients (<span id="recipientCount">0</span>)</label>
+              <span class="status-indicator live">Ready</span>
+            </div>
+            <div class="table-container">
+              <table class="data-table" id="recipientsTable">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Extra Info</th>
+                  </tr>
+                </thead>
+                <tbody id="recipientsTableBody">
+                  <tr>
+                    <td colspan="3" class="empty-state">No recipient data loaded yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB 2: TEXT FIELDS & STYLING -->
+        <div class="tab-content" id="tab-fields">
+          
+          <div class="section-card">
+            <div class="section-header">
+              <label class="section-title">Active Certificate Field</label>
+              <div class="field-selector-chips" id="fieldSelectorChips">
+                <button class="chip active" data-field="name">
+                  <i data-lucide="user"></i> Name
+                </button>
+                <button class="chip" data-field="course">
+                  <i data-lucide="award"></i> Course / Title
+                </button>
+                <button class="chip" data-field="date">
+                  <i data-lucide="calendar"></i> Date
+                </button>
+                <button class="chip" data-field="certId">
+                  <i data-lucide="hash"></i> Certificate ID
+                </button>
+              </div>
+            </div>
+
+            <!-- Field Enable Toggle -->
+            <div class="toggle-row">
+              <span>Enable this field on certificate</span>
+              <label class="switch">
+                <input type="checkbox" id="fieldEnabledCheck" checked>
+                <span class="slider round"></span>
+              </label>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Sample Preview Text</label>
+              <input type="text" id="fieldSampleText" class="input-custom" value="Dr. Elizabeth Montgomery">
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Typography / Font Style</label>
+              <select id="fieldFontFamily" class="select-custom">
+                <option value="PlayfairDisplay" selected>Playfair Display (Classic Serif)</option>
+                <option value="GreatVibes">Great Vibes (Calligraphy Script)</option>
+                <option value="AlexBrush">Alex Brush (Elegant Brush Script)</option>
+                <option value="Montserrat">Montserrat (Modern Bold Sans)</option>
+                <option value="Cinzel">Cinzel (Formal Decorative Serif)</option>
+                <option value="Helvetica">Helvetica (Clean Sans)</option>
+                <option value="TimesRoman">Times Roman (Formal Standard)</option>
+              </select>
+            </div>
+
+            <div class="control-row">
+              <div class="control-group flex-1">
+                <div class="control-label-row">
+                  <label class="control-label">Font Size</label>
+                  <span id="fontSizeDisplay" class="value-badge">30 pt</span>
+                </div>
+                <input type="range" id="fieldFontSize" min="14" max="100" value="30" class="range-custom">
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Color</label>
+                <div class="color-picker-wrapper">
+                  <input type="color" id="fieldColorPicker" value="#800020" class="color-input">
+                  <span id="colorHexText" class="color-hex-label">#800020</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Color Palette Presets -->
+            <div class="preset-colors">
+              <span class="preset-label">Presets:</span>
+              <button class="color-dot" data-color="#1a202c" style="background: #1a202c;" title="Obsidian Charcoal"></button>
+              <button class="color-dot" data-color="#000000" style="background: #000000;" title="Jet Black"></button>
+              <button class="color-dot" data-color="#d4af37" style="background: #d4af37;" title="Royal Gold"></button>
+              <button class="color-dot" data-color="#0f2b59" style="background: #0f2b59;" title="Deep Navy"></button>
+              <button class="color-dot" data-color="#800020" style="background: #800020;" title="Burgundy"></button>
+              <button class="color-dot" data-color="#1b4d3e" style="background: #1b4d3e;" title="Emerald"></button>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Alignment</label>
+              <div class="align-group">
+                <button class="align-btn" data-align="left"><i data-lucide="align-left"></i> Left</button>
+                <button class="align-btn active" data-align="center"><i data-lucide="align-center"></i> Center</button>
+                <button class="align-btn" data-align="right"><i data-lucide="align-right"></i> Right</button>
+              </div>
+            </div>
+
+            <!-- Coordinates Fine-tuning -->
+              <div class="section-header">
+                <span class="card-subtitle"><i data-lucide="move"></i> Position Coordinates (PDF Points)</span>
+                <div class="coord-header-actions">
+                  <button id="btnLockField" class="btn-lock" title="Lock position to prevent dragging">
+                    <i data-lucide="unlock" id="lockIcon"></i>
+                    <span id="lockText">Unlocked</span>
+                  </button>
+                  <button id="btnCenterField" class="btn-text btn-sm"><i data-lucide="target"></i> Auto Center</button>
+                </div>
+              </div>
+              <div class="coord-inputs">
+                <div class="coord-field">
+                  <label>X (Horizontal):</label>
+                  <input type="number" id="coordX" value="421" step="1">
+                </div>
+                <div class="coord-field">
+                  <label>Y (Vertical):</label>
+                  <input type="number" id="coordY" value="280" step="1">
+                </div>
+              </div>
+              <p class="coord-hint">💡 Tip: You can drag the box directly on the certificate canvas!</p>
+            </div>
+
+          </div>
+
+        <!-- TAB 3: SETTINGS -->
+        <div class="tab-content" id="tab-settings">
+          <div class="section-card">
+            <label class="section-title">Destination & Filenames</label>
+            
+            <div class="control-group">
+              <label class="control-label">Local Output Directory</label>
+              <div class="input-with-button">
+                <input type="text" id="outputFolderInput" class="input-custom" value="output" placeholder="e.g. output or /Users/.../Certificates">
+                <button id="btnOpenOutputFolder" class="btn btn-secondary" title="Open Folder in Finder">
+                  <i data-lucide="folder-open"></i>
+                </button>
+              </div>
+              <span class="control-hint">Generated PDFs are saved directly to this folder on your computer.</span>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">File Naming Format</label>
+              <select id="filenameNamingSelect" class="select-custom">
+                <option value="name" selected>{Recipient_Name}.pdf</option>
+                <option value="certId_name">{Certificate_ID}_{Recipient_Name}.pdf</option>
+                <option value="name_certificate">{Recipient_Name}_Certificate.pdf</option>
+              </select>
+            </div>
+
+            <div class="folder-status-box">
+              <div class="folder-info">
+                <i data-lucide="hard-drive"></i>
+                <div>
+                  <strong>Local Output Folder:</strong>
+                  <div id="fullPathDisplay" class="path-text">/Users/sridharsilver/Desktop/Certifivcate/output</div>
+                </div>
+              </div>
+              <button id="btnRefreshOutputFiles" class="btn-text btn-sm">
+                <i data-lucide="rotate-cw"></i> Refresh Files (<span id="outputFileCount">0</span>)
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Center Canvas Workspace -->
+      <section class="canvas-workspace">
+        
+        <!-- Canvas Top Toolbar -->
+        <div class="canvas-toolbar">
+          <div class="toolbar-left">
+            <span class="canvas-title"><i data-lucide="layout"></i> Interactive Template Editor</span>
+            <span class="badge badge-info" id="canvasDimensions">Loading template...</span>
+          </div>
+
+          <div class="toolbar-center">
+            <div class="history-controls">
+              <button id="btnUndo" class="btn-icon" title="Undo (⌘Z / Ctrl+Z)" disabled>
+                <i data-lucide="undo-2"></i>
+              </button>
+              <button id="btnRedo" class="btn-icon" title="Redo (⌘⇧Z / Ctrl+Y)" disabled>
+                <i data-lucide="redo-2"></i>
+              </button>
+            </div>
+            <div class="toolbar-separator"></div>
+            <div class="zoom-controls">
+              <button id="btnZoomOut" class="btn-icon" title="Zoom Out"><i data-lucide="zoom-out"></i></button>
+              <button id="btnZoomReset" class="zoom-btn-badge" title="Click to view Actual 100% Provided Size">
+                <span id="zoomLevelText" class="zoom-text">100%</span>
+              </button>
+              <button id="btnZoomIn" class="btn-icon" title="Zoom In"><i data-lucide="zoom-in"></i></button>
+              <button id="btnFitWidth" class="btn-icon" title="Fit to Screen"><i data-lucide="maximize-2"></i></button>
+            </div>
+          </div>
+
+          <div class="toolbar-right">
+            <label class="checkbox-label">
+              <input type="checkbox" id="showGuidelinesCheck" checked>
+              <span>Alignment Guides</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="showAllFieldsCheck" checked>
+              <span>Show All Fields</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Scrollable Canvas Area -->
+        <div class="canvas-viewport" id="canvasViewport">
+          
+          <div class="canvas-container" id="canvasContainer">
+            <!-- Background Master Certificate Image -->
+            <img id="pdfCanvas" alt="Certificate Template" src="/api/template-image"
+                 style="display:block;">
+
+            <!-- Loading Spinner (inside container, overlays the image area) -->
+            <div class="canvas-loader" id="canvasLoader">
+              <div class="spinner"></div>
+              <p>Loading Certificate Template...</p>
+            </div>
+
+            <!-- Interactive Overlay Layer -->
+            <div class="interactive-overlay" id="interactiveOverlay">
+              
+              <!-- Center Guideline Crosshairs -->
+              <div class="guide-line guide-v" id="guideV"></div>
+              <div class="guide-line guide-h" id="guideH"></div>
+
+              <!-- Draggable Fields Overlays -->
+              <div class="field-box active" id="overlayBox-name" data-field="name">
+                <div class="field-box-handle top-left"></div>
+                <div class="field-box-handle top-right"></div>
+                <div class="field-box-handle bottom-left"></div>
+                <div class="field-box-handle bottom-right"></div>
+                <div class="field-box-label"><i data-lucide="user"></i> Name Field</div>
+                <div class="field-box-content" id="overlayText-name">Dr. Elizabeth Montgomery</div>
+              </div>
+
+              <div class="field-box" id="overlayBox-course" data-field="course" style="display: none;">
+                <div class="field-box-label"><i data-lucide="award"></i> Course Field</div>
+                <div class="field-box-content" id="overlayText-course">Advanced Machine Learning & AI</div>
+              </div>
+
+              <div class="field-box" id="overlayBox-date" data-field="date" style="display: none;">
+                <div class="field-box-label"><i data-lucide="calendar"></i> Date Field</div>
+                <div class="field-box-content" id="overlayText-date">October 24, 2026</div>
+              </div>
+
+              <div class="field-box" id="overlayBox-certId" data-field="certId" style="display: none;">
+                <div class="field-box-label"><i data-lucide="hash"></i> ID Field</div>
+                <div class="field-box-content" id="overlayText-certId">CERT-2026-9841</div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Canvas Footer / Hint Bar -->
+        <div class="canvas-footer">
+          <div class="footer-hint">
+            <i data-lucide="info"></i>
+            <span>Drag the bounding box directly on the certificate to position the text. Coordinates update automatically.</span>
+          </div>
+          <div class="footer-stats">
+            <span>Active: <strong id="activeFieldName">Recipient Name</strong></span>
+            <span>Position: <strong id="activeFieldCoords">X: 421 pt, Y: 280 pt</strong></span>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <!-- BATCH PROGRESS MODAL -->
+  <div class="modal-backdrop" id="progressModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-icon-glow">
+          <i data-lucide="sparkles"></i>
+        </div>
+        <div>
+          <h3 class="modal-title" id="modalProgressTitle">Generating Certificates...</h3>
+          <p class="modal-subtitle" id="modalProgressSubtitle">Writing PDFs directly to your local folder</p>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="progress-wrapper">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressBarFill" style="width: 0%;"></div>
+          </div>
+          <div class="progress-info">
+            <span id="progressText">0 / 0 generated</span>
+            <span id="progressPercent">0%</span>
+          </div>
+        </div>
+
+        <!-- Completed Files Summary -->
+        <div class="completed-files-box" id="completedFilesBox" style="display: none;">
+          <div class="alert alert-success">
+            <i data-lucide="check-circle-2"></i>
+            <div>
+              <strong>Batch Generation Complete!</strong>
+              <p>Successfully created <span id="successCount">0</span> PDF certificates in:</p>
+              <code id="successFolderPath">/output</code>
+            </div>
+          </div>
+
+          <div class="modal-actions-grid">
+            <button id="btnModalOpenFolder" class="btn btn-primary">
+              <i data-lucide="folder-open"></i> Open Folder in Finder
+            </button>
+            <button id="btnModalDownloadZip" class="btn btn-secondary">
+              <i data-lucide="archive"></i> Download as ZIP
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" id="modalFooter">
+        <button id="btnCloseModal" class="btn btn-secondary" style="display: none;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF PREVIEW MODAL -->
+  <div class="modal-backdrop" id="previewModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-icon-glow">
+          <i data-lucide="eye"></i>
+        </div>
+        <div>
+          <h3 class="modal-title">Live Sample Certificate Preview</h3>
+          <p class="modal-subtitle">Exact vector rendering using pdf-lib and embedded font typography</p>
+        </div>
+        <button class="modal-close-btn" id="btnClosePreviewModal"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body modal-preview-body" style="position: relative;">
+        <div class="canvas-loader" id="previewLoader" style="display: none;">
+          <div class="spinner"></div>
+          <p>Generating PDF Preview...</p>
+        </div>
+        <iframe id="previewPdfFrame" src="about:blank"></iframe>
+      </div>
+
+      <div class="modal-footer">
+        <a id="btnPreviewOpenTab" href="#" target="_blank" class="btn btn-secondary" style="display: none; text-decoration: none;">
+          <i data-lucide="external-link"></i> Fullscreen
+        </a>
+        <button id="btnPreviewDownloadSingle" class="btn btn-secondary"><i data-lucide="download"></i> Download Sample</button>
+        <button id="btnClosePreviewModalBottom" class="btn btn-primary">Looks Great!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js?v=9"></script>
+</body>
+</html>
